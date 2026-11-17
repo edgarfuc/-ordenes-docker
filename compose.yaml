@@ -1,0 +1,123 @@
+
+services:
+
+  # ==================================
+  # 1. BASE DE DATOS - SQL SERVER
+  # ==================================
+  db:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: ordenes_db
+    hostname: db
+    env_file:
+      - .env
+    volumes:
+      - sqlserver_data:/var/opt/mssql
+    networks:
+      - ordenes_network
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - /opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P "$$MSSQL_SA_PASSWORD" -Q "SELECT 1" || exit 1
+      interval: 10s
+      timeout: 5s
+      retries: 15
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 2G
+    restart: unless-stopped
+
+  # ==================================
+  # 2. API REST - FLASK
+  # ==================================
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    container_name: ordenes_api
+    env_file:
+      - .env
+    environment:
+      DB_SERVER: db
+      DB_PORT: "1433"
+      DB_NAME: OrdenesDB
+      DB_USER: ${DB_APP_USER}
+      DB_PASSWORD: ${DB_APP_PASSWORD}
+      DB_DRIVER: "ODBC Driver 18 for SQL Server"
+      INIT_SQL_PATH: /app/init.sql
+    volumes:
+      - ./db/init.sql:/app/init.sql:ro
+    ports:
+      - "5000:5000"
+    networks:
+      - ordenes_network
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:5000/health', timeout=3)"
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+    restart: unless-stopped
+
+  # ==================================
+  # 3. FRONTEND - DJANGO
+  # ==================================
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+    container_name: ordenes_web
+    environment:
+      API_BASE_URL: http://api:5000
+    ports:
+      - "8000:8000"
+    networks:
+      - ordenes_network
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/', timeout=3)"
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+    restart: unless-stopped
+
+# ==================================
+# VOLUMEN PERSISTENTE
+# ==================================
+volumes:
+  sqlserver_data:
+    name: ordenes_sqlserver_data
+
+# ==================================
+# RED BRIDGE PROPIA
+# ==================================
+networks:
+  ordenes_network:
+    name: ordenes_network
+    driver: bridge

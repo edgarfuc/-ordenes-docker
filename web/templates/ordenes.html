@@ -1,0 +1,118 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de órdenes</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f1f5f9;
+            margin: 0;
+            padding: 30px;
+            color: #1e293b;
+        }
+        .container {
+            max-width: 1100px;
+            margin: auto;
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+        }
+        h1 { color: #1d4ed8; }
+        form {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 25px;
+        }
+        input, select, button {
+            padding: 11px;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+        }
+        button {
+            background: #2563eb;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 13px;
+            border-bottom: 1px solid #e2e8f0;
+            text-align: left;
+        }
+        th { background: #eff6ff; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>Sistema de órdenes de venta</h1>
+    <p>Administración y control de órdenes</p>
+
+    <h2>Registrar nueva orden</h2>
+
+    <form id="formOrden" method="POST">
+    {% csrf_token %}
+
+    <input type="text" id="cliente" name="cliente"
+           placeholder="Nombre del cliente" required>
+
+    <select id="estado" name="estado">
+        <option value="Pendiente">Pendiente</option>
+        <option value="Pagada">Pagada</option>
+        <option value="Anulada">Anulada</option>
+    </select>
+
+    <input type="number" id="total" name="total"
+           placeholder="Total" min="0" step="0.01" required>
+
+    <button type="submit">Registrar orden</button>
+</form>
+
+    <h2>Órdenes registradas</h2>
+
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Cliente</th>
+                <th>Fecha</th>
+                <th>Estado</th>
+                <th>Total</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody id="tablaOrdenes">
+    {% for orden in ordenes %}
+    <tr>
+        <td>{{ orden.id }}</td>
+        <td>{{ orden.cliente }}</td>
+        <td>{{ orden.fecha }}</td>
+        <td>{{ orden.estado }}</td>
+        <td>L. {{ orden.total }}</td>
+       <td>
+    <form method="post" action="{% url 'eliminar_orden' orden.id %}">
+        {% csrf_token %}
+        <button type="submit" class="btn-eliminar"
+                onclick="return confirm('¿Deseas eliminar esta orden?')">
+            Eliminar
+        </button>
+    </form>
+</td>
+    </tr>
+    {% empty %}
+    <tr>
+        <td colspan="6">No hay órdenes registradas.</td>
+    </tr>
+    {% endfor %}
+</tbody>
+    </table>
+</div>
+</body>
+</html>
